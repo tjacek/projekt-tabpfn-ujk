@@ -7,31 +7,30 @@ import base
 import make_results
 import dataset
 
-def make_shap(   data_path, 
-                 split_path, 
-                 result_path,
-                 shapley_path,
-                 k=None,
-                 clf="RF"):
-    base.make_dir(shapley_path)
-    clf_type=make_results.CLF_DICT[clf]
-    for id_i, path_i in base.iter_files(data_path):
-        data_i=dataset.read_csv(path_i)
-        shapley_path_i=f"{shapley_path}/{id_i}"
-        base.make_dir(shapley_path_i)
-        splits_i = base.SplitGroup.read(f"{split_path}/{id_i}")
-        for j, split_j in enumerate(splits_i.splits):
-            clf_j,_=split_j.fit_clf(data_i,clf_type())
-            train,test=data_i.divide(split_j)
-            if(k):
-                kmeans_summary = shap.kmeans(train.X, k)
-                background_data = kmeans_summary.data    
-            else:
-                background_data = train.X
-            explainer=shap.Explainer( clf_j.model.predict_proba, 
-                                      background_data)
-            shap_values = explainer(test.X).values
-            np.savez(f"{shapley_path_i}/{j}", shap_values)
+def compute_shapley(exp_params):
+    data,splits=exp_params.get_data()
+    clf_type=exp_params.get_clf()
+    def helper(split_i,clf_i):
+        train,test=data.divide(split_i)
+        if(exp_params.k is None):
+            background_data=train.X
+        else:
+            kmeans_summary = shap.kmeans( train.X, 
+                                          exp_params.k)
+            background_data = kmeans_summary.data     
+        explainer=shap.Explainer( clf_i.proba_fun(),
+                                  train.X)
+        shap_values = explainer(test.X)#,max_evals=620)
+        return shap_values.values
+    print(exp_params.out_path)
+    utils.make_dir(exp_params.out_path)
+    for i,split_i in enumerate(tqdm(splits)):
+        out_i=f"{exp_params.out_path}/{i}"
+        if os.path.exists(out_i+".npz"):
+            continue
+        clf_i,_=split_i.fit_clf(data,clf_type())
+        values_i=helper(split_i,clf_i)
+        np.savez(out_i, values_i)
 
 def show_shapley(shapley_path):
     for path_i in base.top_files(shapley_path):
