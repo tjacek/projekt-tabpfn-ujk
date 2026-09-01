@@ -11,6 +11,9 @@ class SplitGroup(object):
     def __len__(self):
         return len(self.splits)
 
+    def __iter__(self):
+        return iter(self.splits)
+
     def __call__(self,data,clf_type):
         all_results,all_clfs=[],[]
         for split_i in tqdm(self.splits):
