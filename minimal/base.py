@@ -2,6 +2,7 @@ import numpy as np
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import RepeatedStratifiedKFold
+import json
 import os
 
 class SplitGroup(object):
@@ -164,3 +165,7 @@ def filtered_files(path,taboo):
         if(not file_i in taboo):
             paths.append(f'{path}/{file_i}')
     return paths
+
+def read_json(in_path):
+    with open(in_path) as json_data:
+        return json.load(json_data)

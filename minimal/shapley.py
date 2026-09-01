@@ -44,18 +44,6 @@ def show_shapley(shapley_path):
     show_heatmap( shap_matrix,
                   shapley_path)
 
-def _show_shapley(shapley_path):
-    for path_i in base.top_files(shapley_path):
-        all_shap=[]
-        for id_i, path_j in base.iter_files(path_i):
-            shap_j=np.load(path_j)["arr_0"]
-            all_shap.append(shap_j)
-        shap_arr=np.concatenate(all_shap,axis=0)
-        shap_matrix=np.mean(shap_arr,axis=0)
-        print(shap_matrix.shape)
-        show_heatmap( shap_matrix,
-                      path_i)
-
 def show_heatmap( matrix,
                   title,
                   out_path=None):
@@ -71,23 +59,26 @@ def show_heatmap( matrix,
     else:
         plt.show()
 
+def shapley_exp(in_path):
+    conf=base.read_json(in_path)
+    prototype=exp.ExpParams( conf["data_path"],
+                             conf["split_path"],
+                             conf["out_path"])
+    clf_iter=prototype.iter_exp("clf_type",conf["clf"])
+    base.make_dir(prototype.out_path)
+    for exp_i in clf_iter:
+        k_iter=exp_i.iter_exp( "k",conf["k"])
+        for exp_j in k_iter:
+            exp_j.out_path+=f"{exp_j.clf_type}_{exp_j.k}"
+            make_shap(exp_j)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_path", type=str, default="zbiory_danych/cmc")
-    parser.add_argument("--split_path", type=str, default="splits/cmc")
-    parser.add_argument("--result_path", type=str, default="results/cmc")
-    parser.add_argument("--clf", type=str, default="RF")
-    parser.add_argument("--shapley_path", type=str,default="shapley/cmc")
-    parser.add_argument("--k", type=str,default=100)
-    parser.add_argument("--cmd", type=str,default="make")
+    parser.add_argument("--conf_path",type=str,default="conf.json") 
+    parser.add_argument("--shapley_path",type=str,default="shapley/cmc/RF_100") 
+    parser.add_argument("--cmd", type=str,default="show")
     args=parser.parse_args()
     if(args.cmd=="make"):
-        shap_exp=exp.ExpParams( args.data_path,
-                                args.split_path,
-                                args.shapley_path,
-                                args.clf,
-                                args.k
-                              )
-        make_shap(shap_exp)
+        shapley_exp(args.conf_path)
     if(args.cmd=="show"):
         show_shapley(args.shapley_path)
